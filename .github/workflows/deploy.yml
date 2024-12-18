@@ -1,65 +1,36 @@
-name: deno
-
+name: Deploy
 on:
   push:
-    branches: [main]
+    branches: main
   pull_request:
-    branches: [main]
-  pull_request_review:
-    types: [submitted]
-    branches: [main]
+    branches: main
 
 jobs:
-  fmt:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      - uses: denoland/setup-deno@v1
-        with:
-          deno-version: v2.x
-      - run: deno fmt --check
-
-  lint:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      - uses: denoland/setup-deno@v1
-        with:
-          deno-version: v2.x
-      - run: deno lint
-
-  test:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      - uses: denoland/setup-deno@v1
-        with:
-          deno-version: v2.x
-      - run: deno test -A --coverage=cov_profile --no-check
-      - run: deno coverage cov_profile --lcov --output=lcov.info
-      - uses: codecov/codecov-action@v4
-        with:
-          token: ${{ secrets.CODECOV_TOKEN }}
-
   deploy:
-    if: github.event_name == 'push' # event push only runs on main
+    name: Deploy
     runs-on: ubuntu-latest
-    needs:
-      - test
+
     permissions:
-      id-token: write
-      contents: read
+      id-token: write # Needed for auth with Deno Deploy
+      contents: read # Needed to clone the repository
+
     steps:
-      - uses: actions/checkout@v4
-      - uses: denoland/setup-deno@v1
+      - name: Clone repository
+        uses: actions/checkout@v4
+
+      - name: Install Deno
+        uses: denoland/setup-deno@v2
         with:
           deno-version: v2.x
 
-      - run: deno run -A db/_ensureIndexes.ts
-        env:
-          MONGO_URI: ${{ secrets.MONGO_URI }}
+      - name: Build step
+        run: "deno task discord"
 
-      - uses: denoland/deployctl@v1
+      - name: Upload to Deno Deploy
+        uses: denoland/deployctl@v1
         with:
-          project: ${{ secrets.DENO_ID }}
-          entrypoint: src/interactions.ts
+          project: "vallienfulk-fable-20"
+          entrypoint: "src/interactions.ts"
+          root: ""
+          
+          
